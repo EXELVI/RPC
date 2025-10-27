@@ -3,3 +3,4 @@ package-lock.json
 browser.js
 test/auth.js
 docs-out
+*.tgz

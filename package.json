@@ -1,5 +1,5 @@
 {
-  "name": "discord-rpc",
+  "name": "@exelvi/discord-rpc",
   "version": "4.0.1",
   "description": "A simple RPC client for Discord",
   "keywords": [
@@ -9,17 +9,18 @@
     "remote procedural call"
   ],
   "main": "src/index.js",
+  "types": "index.d.ts",
   "jsdelivr": "browser.js",
   "unpkg": "browser.js",
-  "author": "snek <me@gus.host>",
+  "author": "exelvi",
   "license": "MIT",
-  "homepage": "https://github.com/discordjs/RPC#readme",
+  "homepage": "https://github.com/exelvi/RPC#readme",
   "bugs": {
-    "url": "https://github.com/discordjs/RPC/issues"
+    "url": "https://github.com/exelvi/RPC/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/discordjs/RPC.git"
+    "url": "git+https://github.com/exelvi/RPC.git"
   },
   "scripts": {
     "lint": "eslint src test --ext=js",
@@ -38,7 +39,7 @@
   "devDependencies": {
     "babel-eslint": "^10.0.3",
     "discord.js-docgen": "github:discordjs/docgen",
-    "electron": "^7.1.9",
+    "electron": "^7.3.3",
     "eslint": "^6.1.0",
     "eslint-config-airbnb-base": "14.0.0",
     "eslint-plugin-import": "^2.18.2",
