@@ -9,7 +9,7 @@ function keyMirror(arr) {
 }
 
 
-exports.browser = typeof window !== 'undefined';
+exports.browser = typeof navigator !== 'undefined';
 
 exports.RPCCommands = keyMirror([
   'DISPATCH',

@@ -27,6 +27,7 @@
     "docs": "mkdir -p docs-out && docgen --source src --output docs-out/master.json --jsdoc jsdoc.json --custom docgen.json",
     "example": "electron example/main.js",
     "build:browser": "webpack-cli",
+    "build:extension": "esbuild src/index.js --bundle --outfile=extension/browser.js --platform=browser --minify",
     "prepublishOnly": "npm run lint && npm run build:browser"
   },
   "dependencies": {
@@ -40,6 +41,7 @@
     "babel-eslint": "^10.0.3",
     "discord.js-docgen": "github:discordjs/docgen",
     "electron": "^7.3.3",
+    "esbuild": "^0.25.11",
     "eslint": "^6.1.0",
     "eslint-config-airbnb-base": "14.0.0",
     "eslint-plugin-import": "^2.18.2",
@@ -54,6 +56,8 @@
     "erlpack": false,
     "electron": false,
     "register-scheme": false,
-    "./src/transports/IPC.js": false
+    "./src/transports/IPC.js": false,
+    "example/main.js": false,
+    "example/renderer.js": false
   }
 }

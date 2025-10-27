@@ -1,12 +1,15 @@
-'use strict';
-
-module.exports = {
-  mode: 'production',
+export default {
+  target: "webworker",
   entry: require.resolve('.'),
   output: {
-    path: __dirname,
-    filename: 'browser.js',
-    library: 'RPC',
-    libraryTarget: 'umd',
+    filename: "background.js",
+    path: path.resolve("dist"),
+  },
+  resolve: {
+    fallback: {
+      // Evita polyfill automatici di Node.js
+      fs: false,
+      path: false,
+    },
   },
 };
