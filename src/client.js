@@ -473,16 +473,28 @@ class RPCClient extends EventEmitter {
     if (args.startTimestamp || args.endTimestamp) {
       timestamps = {};
       if (args.startTimestamp !== undefined && args.startTimestamp !== null) {
-        if (args.startTimestamp instanceof Date) timestamps.start = Math.round(args.startTimestamp.getTime());
-        else if (typeof args.startTimestamp === 'number') timestamps.start = Math.round(args.startTimestamp);
-        else throw new TypeError('startTimestamp must be a Date or number');
-        if (timestamps.start > 2147483647000) throw new RangeError('timestamps.start must fit into a unix timestamp');
+        if (args.startTimestamp instanceof Date) {
+          timestamps.start = Math.round(args.startTimestamp.getTime());
+        } else if (typeof args.startTimestamp === 'number') {
+          timestamps.start = Math.round(args.startTimestamp);
+        } else {
+          throw new TypeError('startTimestamp must be a Date or number');
+        }
+        if (timestamps.start > 2147483647000) {
+          throw new RangeError('timestamps.start must fit into a unix timestamp');
+        }
       }
       if (args.endTimestamp !== undefined && args.endTimestamp !== null) {
-        if (args.endTimestamp instanceof Date) timestamps.end = Math.round(args.endTimestamp.getTime());
-        else if (typeof args.endTimestamp === 'number') timestamps.end = Math.round(args.endTimestamp);
-        else throw new TypeError('endTimestamp must be a Date or number');
-        if (timestamps.end > 2147483647000) throw new RangeError('timestamps.end must fit into a unix timestamp');
+        if (args.endTimestamp instanceof Date) {
+          timestamps.end = Math.round(args.endTimestamp.getTime());
+        } else if (typeof args.endTimestamp === 'number') {
+          timestamps.end = Math.round(args.endTimestamp);
+        } else {
+          throw new TypeError('endTimestamp must be a Date or number');
+        }
+        if (timestamps.end > 2147483647000) {
+          throw new RangeError('timestamps.end must fit into a unix timestamp');
+        }
       }
     }
 
@@ -510,7 +522,9 @@ class RPCClient extends EventEmitter {
     let party;
     if (args.partyId || args.partySize || args.partyMax) {
       party = {};
-      if (args.partyId) party.id = args.partyId;
+      if (args.partyId) {
+        party.id = args.partyId;
+      }
       if (args.partySize !== undefined || args.partyMax !== undefined) {
         party.size = [args.partySize || 0, args.partyMax || 0];
       }
@@ -541,12 +555,14 @@ class RPCClient extends EventEmitter {
           // Map to an object without url so we can validate and throw a clear error below.
           return { label: b };
         }
-        if (b && typeof b === 'object') return { label: b.label || b.name, url: b.url || b.link };
+        if (b && typeof b === 'object') {
+          return { label: b.label || b.name, url: b.url || b.link };
+        }
         throw new TypeError('buttons must be an array of strings or objects');
       }).slice(0, 2); // Discord supports up to 2 buttons
 
       // Validate that each button includes a url (required by RPC schema)
-      for (let i = 0; i < buttons.length; i++) {
+      for (let i = 0; i < buttons.length; i += 1) {
         const btn = buttons[i];
         if (!btn || typeof btn.url !== 'string' || btn.url.length === 0) {
           throw new TypeError(`buttons at position ${i} must be an object with a non-empty 'url' string`);
@@ -562,9 +578,15 @@ class RPCClient extends EventEmitter {
       url: args.url || args.streamUrl || args.stream_url,
       created_at: (function () {
         const v = args.createdAt || args.created_at || args.created;
-        if (v === undefined || v === null) return undefined;
-        if (v instanceof Date) return Math.round(v.getTime());
-        if (typeof v === 'number') return Math.round(v);
+        if (v === undefined || v === null) {
+          return undefined;
+        }
+        if (v instanceof Date) {
+          return Math.round(v.getTime());
+        }
+        if (typeof v === 'number') {
+          return Math.round(v);
+        }
         throw new TypeError('created_at must be a Date or number');
       }()),
 
@@ -576,10 +598,16 @@ class RPCClient extends EventEmitter {
       state_url: args.stateUrl || args.state_url,
       emoji: (function () {
         const e = args.emoji || args.emojiObject || args.emoji_object;
-        if (!e) return undefined;
+        if (!e) {
+          return undefined;
+        }
         // Accept either {name, id, animated} or simple name string
-        if (typeof e === 'string') return { name: e };
-        if (typeof e === 'object') return { name: e.name, id: e.id, animated: !!e.animated };
+        if (typeof e === 'string') {
+          return { name: e };
+        }
+        if (typeof e === 'object') {
+          return { name: e.name, id: e.id, animated: !!e.animated };
+        }
         throw new TypeError('emoji must be an object or string');
       }()),
 
