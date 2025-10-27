@@ -468,31 +468,35 @@ class RPCClient extends EventEmitter {
    * @returns {Promise}
    */
   setActivity(args = {}, pid = getPid()) {
+    // Normalize timestamps (keep in milliseconds like before). Accept Date or number.
     let timestamps;
-    let assets;
-    let party;
-    let secrets;
     if (args.startTimestamp || args.endTimestamp) {
-      timestamps = {
-        start: args.startTimestamp,
-        end: args.endTimestamp,
-      };
-      if (timestamps.start instanceof Date) {
-        timestamps.start = Math.round(timestamps.start.getTime());
+      timestamps = {};
+      if (args.startTimestamp !== undefined && args.startTimestamp !== null) {
+        if (args.startTimestamp instanceof Date) timestamps.start = Math.round(args.startTimestamp.getTime());
+        else if (typeof args.startTimestamp === 'number') timestamps.start = Math.round(args.startTimestamp);
+        else throw new TypeError('startTimestamp must be a Date or number');
+        if (timestamps.start > 2147483647000) throw new RangeError('timestamps.start must fit into a unix timestamp');
       }
-      if (timestamps.end instanceof Date) {
-        timestamps.end = Math.round(timestamps.end.getTime());
-      }
-      if (timestamps.start > 2147483647000) {
-        throw new RangeError('timestamps.start must fit into a unix timestamp');
-      }
-      if (timestamps.end > 2147483647000) {
-        throw new RangeError('timestamps.end must fit into a unix timestamp');
+      if (args.endTimestamp !== undefined && args.endTimestamp !== null) {
+        if (args.endTimestamp instanceof Date) timestamps.end = Math.round(args.endTimestamp.getTime());
+        else if (typeof args.endTimestamp === 'number') timestamps.end = Math.round(args.endTimestamp);
+        else throw new TypeError('endTimestamp must be a Date or number');
+        if (timestamps.end > 2147483647000) throw new RangeError('timestamps.end must fit into a unix timestamp');
       }
     }
-    if (
-      args.largeImageKey || args.largeImageText
-      || args.smallImageKey || args.smallImageText
+
+    // Assets can be provided either as explicit args or an `assets` object
+    let assets;
+    if (args.assets && typeof args.assets === 'object') {
+      assets = {
+        large_image: args.assets.largeImage || args.assets.large_image || args.largeImageKey,
+        large_text: args.assets.largeText || args.assets.large_text || args.largeImageText,
+        small_image: args.assets.smallImage || args.assets.small_image || args.smallImageKey,
+        small_text: args.assets.smallText || args.assets.small_text || args.smallImageText,
+      };
+    } else if (
+      args.largeImageKey || args.largeImageText || args.smallImageKey || args.smallImageText
     ) {
       assets = {
         large_image: args.largeImageKey,
@@ -501,13 +505,26 @@ class RPCClient extends EventEmitter {
         small_text: args.smallImageText,
       };
     }
-    if (args.partySize || args.partyId || args.partyMax) {
-      party = { id: args.partyId };
-      if (args.partySize || args.partyMax) {
-        party.size = [args.partySize, args.partyMax];
+
+    // Party: normalize to expected shape { id, size: [current, max] }
+    let party;
+    if (args.partyId || args.partySize || args.partyMax) {
+      party = {};
+      if (args.partyId) party.id = args.partyId;
+      if (args.partySize !== undefined || args.partyMax !== undefined) {
+        party.size = [args.partySize || 0, args.partyMax || 0];
       }
     }
-    if (args.matchSecret || args.joinSecret || args.spectateSecret) {
+
+    // Secrets
+    let secrets;
+    if (args.secrets && typeof args.secrets === 'object') {
+      secrets = {
+        match: args.secrets.match || args.secrets.matchSecret,
+        join: args.secrets.join || args.secrets.joinSecret,
+        spectate: args.secrets.spectate || args.secrets.spectateSecret,
+      };
+    } else if (args.matchSecret || args.joinSecret || args.spectateSecret) {
       secrets = {
         match: args.matchSecret,
         join: args.joinSecret,
@@ -515,18 +532,76 @@ class RPCClient extends EventEmitter {
       };
     }
 
+    // Buttons: accept array of strings or objects and normalize to objects
+    let buttons;
+    if (Array.isArray(args.buttons)) {
+      buttons = args.buttons.map((b) => {
+        if (typeof b === 'string') {
+          // Strings alone are ambiguous because RPC requires a url for buttons.
+          // Map to an object without url so we can validate and throw a clear error below.
+          return { label: b };
+        }
+        if (b && typeof b === 'object') return { label: b.label || b.name, url: b.url || b.link };
+        throw new TypeError('buttons must be an array of strings or objects');
+      }).slice(0, 2); // Discord supports up to 2 buttons
+
+      // Validate that each button includes a url (required by RPC schema)
+      for (let i = 0; i < buttons.length; i++) {
+        const btn = buttons[i];
+        if (!btn || typeof btn.url !== 'string' || btn.url.length === 0) {
+          throw new TypeError(`buttons at position ${i} must be an object with a non-empty 'url' string`);
+        }
+      }
+    }
+
+    // Build activity payload. Allow passing a full `activity` object to bypass normalization.
+    const activity = args.activity && typeof args.activity === 'object' ? args.activity : {
+      // Basic fields
+      name: args.name || args.activityName || args.activity_name,
+      type: typeof args.type === 'number' ? args.type : undefined,
+      url: args.url || args.streamUrl || args.stream_url,
+      created_at: (function () {
+        const v = args.createdAt || args.created_at || args.created;
+        if (v === undefined || v === null) return undefined;
+        if (v instanceof Date) return Math.round(v.getTime());
+        if (typeof v === 'number') return Math.round(v);
+        throw new TypeError('created_at must be a Date or number');
+      }()),
+
+      // Display and text fields
+      status_display_type: args.statusDisplayType || args.status_display_type,
+      details: args.details,
+      details_url: args.detailsUrl || args.details_url,
+      state: args.state,
+      state_url: args.stateUrl || args.state_url,
+      emoji: (function () {
+        const e = args.emoji || args.emojiObject || args.emoji_object;
+        if (!e) return undefined;
+        // Accept either {name, id, animated} or simple name string
+        if (typeof e === 'string') return { name: e };
+        if (typeof e === 'object') return { name: e.name, id: e.id, animated: !!e.animated };
+        throw new TypeError('emoji must be an object or string');
+      }()),
+
+      // existing normalized sections
+      timestamps,
+      application_id: args.applicationId || args.application_id,
+      party,
+      assets,
+      secrets,
+      instance: !!args.instance,
+      flags: typeof args.flags === 'number' ? args.flags : undefined,
+      buttons,
+    };
+
+    // Validation: Discord RPC currently doesn't allow sending secrets together with buttons
+    if (activity.secrets && Array.isArray(activity.buttons) && activity.buttons.length > 0) {
+      throw new TypeError('secrets cannot currently be sent with buttons');
+    }
+
     return this.request(RPCCommands.SET_ACTIVITY, {
       pid,
-      activity: {
-        state: args.state,
-        details: args.details,
-        timestamps,
-        assets,
-        party,
-        secrets,
-        buttons: args.buttons,
-        instance: !!args.instance,
-      },
+      activity,
     });
   }
 
@@ -537,8 +612,10 @@ class RPCClient extends EventEmitter {
    * @returns {Promise}
    */
   clearActivity(pid = getPid()) {
+    // Explicitly clear activity by sending activity: null
     return this.request(RPCCommands.SET_ACTIVITY, {
       pid,
+      activity: null,
     });
   }
 
